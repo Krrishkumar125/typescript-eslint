@@ -191,7 +191,8 @@ export type MessageId =
   | 'noOverlapBooleanExpression'
   | 'noStrictNullCheck'
   | 'suggestRemoveOptionalChain'
-  | 'typeGuardAlreadyIsType';
+  | 'typeGuardAlreadyIsType'
+  | 'typeGuardNeverMatches';
 
 export default createRule<Options, MessageId>({
   name: 'no-unnecessary-condition',
@@ -226,6 +227,8 @@ export default createRule<Options, MessageId>({
       suggestRemoveOptionalChain: 'Remove unnecessary optional chain',
       typeGuardAlreadyIsType:
         'Unnecessary conditional, expression already has the type being checked by the {{typeGuardOrAssertionFunction}}.',
+      typeGuardNeverMatches:
+        'Unnecessary conditional, expression can never have the type being checked by the {{typeGuardOrAssertionFunction}}.',
     },
     schema: [
       {
@@ -735,6 +738,22 @@ export default createRule<Options, MessageId>({
                   : 'type guard',
               },
             });
+          } else if (
+            areDisjointPrimitiveTypes(
+              checker,
+              typeOfArgument,
+              typeGuardAssertedArgument.type,
+            )
+          ) {
+            context.report({
+              node: typeGuardAssertedArgument.argument,
+              messageId: 'typeGuardNeverMatches',
+              data: {
+                typeGuardOrAssertionFunction: typeGuardAssertedArgument.asserts
+                  ? 'assertion function'
+                  : 'type guard',
+              },
+            });
           }
         }
       }
@@ -1077,4 +1096,49 @@ function normalizeAllowConstantLoopConditions(
   }
 
   return allowConstantLoopConditions;
+}
+
+/**
+ * Returns `true` when two types can be proven to have no value in common.
+ *
+ * This only handles unions of primitive types (and their literals), where two
+ * constituents overlap exactly when one is assignable to the other. Anything
+ * else (objects, type parameters, template literal patterns, ...) can overlap
+ * in ways assignability can't detect, so we return `false` for it.
+ */
+function areDisjointPrimitiveTypes(
+  checker: ts.TypeChecker,
+  a: ts.Type,
+  b: ts.Type,
+): boolean {
+  const aParts = tsutils.unionConstituents(a);
+  const bParts = tsutils.unionConstituents(b);
+  const isPrimitive = (type: ts.Type): boolean =>
+    tsutils.isTypeFlagSet(
+      type,
+      ts.TypeFlags.StringLike |
+        ts.TypeFlags.NumberLike |
+        ts.TypeFlags.BigIntLike |
+        ts.TypeFlags.BooleanLike |
+        ts.TypeFlags.ESSymbolLike |
+        ts.TypeFlags.Null |
+        ts.TypeFlags.Undefined |
+        ts.TypeFlags.Void,
+    ) &&
+    !tsutils.isTypeFlagSet(
+      type,
+      ts.TypeFlags.TemplateLiteral | ts.TypeFlags.StringMapping,
+    );
+
+  if (!aParts.every(isPrimitive) || !bParts.every(isPrimitive)) {
+    return false;
+  }
+
+  return aParts.every(aPart =>
+    bParts.every(
+      bPart =>
+        !checker.isTypeAssignableTo(aPart, bPart) &&
+        !checker.isTypeAssignableTo(bPart, aPart),
+    ),
+  );
 }

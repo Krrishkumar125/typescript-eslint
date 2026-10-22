@@ -1394,6 +1394,60 @@ if (isNarrower(w)) {
     },
     {
       code: `
+declare function isNumber(x: unknown): x is number;
+declare const a: string | number;
+if (isNumber(a)) {
+}
+      `,
+      options: [{ checkTypePredicates: true }],
+    },
+    {
+      code: `
+declare function isFoo(x: unknown): x is 'foo';
+declare const a: string;
+if (isFoo(a)) {
+}
+      `,
+      options: [{ checkTypePredicates: true }],
+    },
+    {
+      code: `
+declare function isPx(x: unknown): x is \`\${number}px\`;
+declare const a: \`\${string}x\`;
+if (isPx(a)) {
+}
+      `,
+      options: [{ checkTypePredicates: true }],
+    },
+    {
+      code: `
+declare function isDate(x: unknown): x is Date;
+declare const a: { getTime(): number };
+if (isDate(a)) {
+}
+      `,
+      options: [{ checkTypePredicates: true }],
+    },
+    {
+      code: `
+declare function isString(x: unknown): x is string;
+declare const a: { toString(): string };
+if (isString(a)) {
+}
+      `,
+      options: [{ checkTypePredicates: true }],
+    },
+    {
+      code: `
+declare function isNumber(x: unknown): x is number;
+declare const a: string;
+if (isNumber(a)) {
+}
+      `,
+      options: [{ checkTypePredicates: false }],
+    },
+    {
+      code: `
 type A = { [name in Lowercase<string>]?: A };
 declare const a: A;
 a.a?.a?.a;
@@ -5259,6 +5313,120 @@ if (isNarrower(w)) {
           endLine: 11,
           line: 11,
           messageId: 'typeGuardAlreadyIsType',
+        },
+      ],
+      options: [{ checkTypePredicates: true }],
+    },
+    {
+      code: `
+declare function isNumber(x: unknown): x is number;
+declare const a: string;
+if (isNumber(a)) {
+}
+      `,
+      errors: [
+        {
+          column: 14,
+          data: { typeGuardOrAssertionFunction: 'type guard' },
+          endColumn: 15,
+          endLine: 4,
+          line: 4,
+          messageId: 'typeGuardNeverMatches',
+        },
+      ],
+      options: [{ checkTypePredicates: true }],
+    },
+    {
+      code: `
+declare function isString(x: unknown): x is string;
+declare const a: number | boolean | null;
+if (isString(a)) {
+}
+      `,
+      errors: [
+        {
+          column: 14,
+          data: { typeGuardOrAssertionFunction: 'type guard' },
+          endColumn: 15,
+          endLine: 4,
+          line: 4,
+          messageId: 'typeGuardNeverMatches',
+        },
+      ],
+      options: [{ checkTypePredicates: true }],
+    },
+    {
+      code: `
+declare function isFoo(x: unknown): x is 'foo';
+declare const a: 'bar' | 'baz';
+if (isFoo(a)) {
+}
+      `,
+      errors: [
+        {
+          column: 11,
+          data: { typeGuardOrAssertionFunction: 'type guard' },
+          endColumn: 12,
+          endLine: 4,
+          line: 4,
+          messageId: 'typeGuardNeverMatches',
+        },
+      ],
+      options: [{ checkTypePredicates: true }],
+    },
+    {
+      code: `
+declare function isNullish(x: unknown): x is null | undefined;
+declare const a: string;
+if (isNullish(a)) {
+}
+      `,
+      errors: [
+        {
+          column: 15,
+          data: { typeGuardOrAssertionFunction: 'type guard' },
+          endColumn: 16,
+          endLine: 4,
+          line: 4,
+          messageId: 'typeGuardNeverMatches',
+        },
+      ],
+      options: [{ checkTypePredicates: true }],
+    },
+    {
+      code: `
+declare function isNumber(x: unknown): x is number;
+function f<T extends string>(a: T) {
+  if (isNumber(a)) {
+  }
+}
+      `,
+      errors: [
+        {
+          column: 16,
+          data: { typeGuardOrAssertionFunction: 'type guard' },
+          endColumn: 17,
+          endLine: 4,
+          line: 4,
+          messageId: 'typeGuardNeverMatches',
+        },
+      ],
+      options: [{ checkTypePredicates: true }],
+    },
+    {
+      code: `
+declare function assertsNumber(x: unknown): asserts x is number;
+declare const a: string;
+assertsNumber(a);
+      `,
+      errors: [
+        {
+          column: 15,
+          data: { typeGuardOrAssertionFunction: 'assertion function' },
+          endColumn: 16,
+          endLine: 4,
+          line: 4,
+          messageId: 'typeGuardNeverMatches',
         },
       ],
       options: [{ checkTypePredicates: true }],
